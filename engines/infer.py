@@ -28,7 +28,7 @@ import torch.nn.functional as F
 
 from .defaults import create_ddp_model
 import utils.comm as comm
-from models import build_model
+from models.builder import build_model
 from utils.logger import get_root_logger
 from utils.registry import Registry
 from utils.misc import (
@@ -65,7 +65,7 @@ class InferBase:
         n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
         self.logger.info(f"Num params: {n_parameters}")
         model = create_ddp_model(
-            model.cuda(),
+            model.cuda() if torch.cuda.is_available() else model,
             broadcast_buffers=False,
             find_unused_parameters=self.cfg.find_unused_parameters,
         )
@@ -116,10 +116,14 @@ class Audio2ExpressionInfer(InferBase):
 
         with torch.no_grad():
             input_dict = {}
-            input_dict['id_idx'] = F.one_hot(torch.tensor(self.cfg.id_idx),
-                                             self.cfg.model.backbone.num_identity_classes).cuda(non_blocking=True)[None,...]
+
             speech_array, ssr = librosa.load(self.cfg.audio_input, sr=16000)
-            input_dict['input_audio_array'] = torch.FloatTensor(speech_array).cuda(non_blocking=True)[None,...]
+            input_dict['input_audio_array'] = torch.FloatTensor(speech_array)[None,...]
+            input_dict['id_idx'] = F.one_hot(torch.tensor(self.cfg.id_idx),
+                                             self.cfg.model.backbone.num_identity_classes)[None,...]
+            if torch.cuda.is_available():
+                input_dict['id_idx'] = input_dict['id_idx'].cuda(non_blocking=True)
+                input_dict['input_audio_array'] = input_dict['input_audio_array'].cuda(non_blocking=True)
 
             end = time.time()
             output_dict = self.model(input_dict)
@@ -198,9 +202,11 @@ class Audio2ExpressionInfer(InferBase):
             try:
                 input_dict = {}
                 input_dict['id_idx'] = F.one_hot(torch.tensor(self.cfg.id_idx),
-                                                 self.cfg.model.backbone.num_identity_classes).cuda(non_blocking=True)[
-                    None, ...]
-                input_dict['input_audio_array'] = torch.FloatTensor(input_audio).cuda(non_blocking=True)[None, ...]
+                                                 self.cfg.model.backbone.num_identity_classes)[None, ...]
+                input_dict['input_audio_array'] = torch.FloatTensor(input_audio)[None, ...]
+                if torch.cuda.is_available():
+                    input_dict['id_idx'] = input_dict['id_idx'].cuda(non_blocking=True)
+                    input_dict['input_audio_array'] = input_dict['input_audio_array'].cuda(non_blocking=True)
                 output_dict = self.model(input_dict)
                 out_exp = output_dict['pred_exp'].squeeze().cpu().numpy()[start_frame:, :]
             except:
