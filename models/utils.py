@@ -313,9 +313,9 @@ def apply_random_eye_blinks_context(
 
 def export_blendshape_animation(
         blendshape_weights: np.ndarray,
-        output_path: str,
-        blendshape_names: List[str],
-        fps: float,
+        output_path: str = None,
+        blendshape_names: List[str] = [],
+        fps: float = 30,
         rotation_data: Optional[np.ndarray] = None
 ) -> None:
     """
@@ -360,16 +360,18 @@ def export_blendshape_animation(
         }
         animation_data["frames"].append(frame_data)
 
-    # Safeguard against data loss
-    if not output_path.endswith('.json'):
-        output_path += '.json'
+    if output_path:
+        # Safeguard against data loss
+        if not output_path.endswith('.json'):
+            output_path += '.json'
 
-    # Write to file with error handling
-    try:
-        with open(output_path, 'w', encoding='utf-8') as json_file:
-            json.dump(animation_data, json_file, indent=2, ensure_ascii=False)
-    except Exception as e:
-        raise IOError(f"Failed to write animation data: {str(e)}") from e
+        # Write to file with error handling
+        try:
+            with open(output_path, 'w', encoding='utf-8') as json_file:
+                json.dump(animation_data, json_file, indent=2, ensure_ascii=False)
+        except Exception as e:
+            raise IOError(f"Failed to write animation data: {str(e)}") from e
+    return animation_data
 
 
 def apply_savitzky_golay_smoothing(
