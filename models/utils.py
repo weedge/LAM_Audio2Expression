@@ -331,6 +331,8 @@ def export_blendshape_animation(
     Raises:
         ValueError: If input dimensions are incompatible
         IOError: If file writing fails
+    
+    Return: animation data structure
     """
     # Validate input dimensions
     if blendshape_weights.shape[1] != 52:
